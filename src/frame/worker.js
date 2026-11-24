@@ -1,5 +1,6 @@
 import init from 'manifold-3d'
 import wasmUrl from 'manifold-3d/manifold.wasm?url'
+import { kitFilename } from './kit-name.js'
 import { buildKit } from './kit.js'
 import { frameLayout } from './layout.js'
 import { frameParts } from './solids.ts'
@@ -32,8 +33,14 @@ self.onmessage = async ({ data }) => {
       self.postMessage({ meshes }, transfers)
       return
     }
-    const zip = buildKit(kernel, data.tree, data.hardware)
-    self.postMessage({ zip }, [zip.buffer])
+    const zip = buildKit(
+      kernel,
+      data.tree,
+      data.hardware,
+      data.screenshot,
+      data.joints
+    )
+    self.postMessage({ zip, filename: kitFilename(data.tree) }, [zip.buffer])
   } catch (error) {
     self.postMessage({ error: error.message })
   }

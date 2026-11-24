@@ -1,7 +1,7 @@
 import { cutSheet } from './cut-sheet.js'
 import { hardware, frameLayout, savedHardware } from './layout.js'
 
-export function setupFrameDialog(tree, refreshPreview) {
+export function setupFrameDialog(tree, refreshPreview, capturePreview) {
   const $ = (id) => document.getElementById(id)
   const dialog = $('frame-dialog'),
     form = $('frame-options'),
@@ -87,11 +87,13 @@ export function setupFrameDialog(tree, refreshPreview) {
       refreshPreview()
     }
   }
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault()
-    const f = settings()
+    if (currentWorker) return
+    const config = { ...tree },
+      f = settings()
     try {
-      frameLayout(tree, f)
+      frameLayout(config, f)
     } catch (error) {
       status.textContent = error.message
       return
@@ -120,14 +122,22 @@ export function setupFrameDialog(tree, refreshPreview) {
         finish(data.error)
         return
       }
-      download(
-        new Blob([data.zip], { type: 'application/zip' }),
-        'mega-tree-frame.zip'
-      )
+      download(new Blob([data.zip], { type: 'application/zip' }), data.filename)
       finish(
         'Kit downloaded. CUT-SHEET.txt lists what to buy and cut. ASSEMBLY.txt has print quantities and assembly steps.'
       )
     }
-    currentWorker.postMessage({ tree: { ...tree }, hardware: f })
+    const worker = currentWorker
+    try {
+      const { screenshot, joints } = await capturePreview()
+      if (currentWorker === worker)
+        worker.postMessage({ tree: config, hardware: f, screenshot, joints }, [
+          screenshot.buffer,
+          joints.buffer,
+        ])
+    } catch (error) {
+      if (currentWorker === worker)
+        finish('Kit export failed. ' + error.message)
+    }
   }
 }

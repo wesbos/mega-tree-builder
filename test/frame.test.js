@@ -9,6 +9,12 @@ import { hardware, frameLayout } from '../src/frame/layout.js'
 import { previewLayout } from '../src/frame/assembled.js'
 import { strandAngle } from '../src/model.js'
 import { sockets } from '../src/frame/base.js'
+const png = new Uint8Array(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/2e8AAAAASUVORK5CYII=',
+    'base64'
+  )
+)
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, a + ' versus ' + b)
 test('every occupied row shares one elevation, radius and angular step', () => {
   for (const patch of [
@@ -102,11 +108,13 @@ test('both whole bridge rails close in one translation and all three spokes can 
 test('every binary STL in the default ZIP has a closed, oriented surface', async () => {
   const kernel = await init()
   kernel.setup()
-  const files = unzipSync(buildKit(kernel, defaults))
+  const files = unzipSync(buildKit(kernel, defaults, hardware, png, png))
   assert.match(
     strFromU8(files['ASSEMBLY.txt']),
     /24 strips × 50 tree pixels \+ 40 star pixels/
   )
+  assert.deepEqual(files['tree-render.png'], png)
+  assert.ok(files['joint-sections.svg'])
   const stls = Object.entries(files).filter(([name]) => name.endsWith('.stl'))
   assert.deepEqual(
     stls.map(([name]) => name),
@@ -234,7 +242,7 @@ test('the cut sheet groups fractional tape marks and accounts for kerf and longe
   assert.doesNotMatch(longer.text, /Stick \d +1 × 130"/)
 })
 
-test('reinforced mast socket has material in the gusset and segmented crown seats without interference', async () => {
+test('rolling-ball mast blend follows the socket saddle and segmented crown seats without interference', async () => {
   const k = await init()
   k.setup()
   const p = { ...defaults, top: 12, strands: 15 }
@@ -246,11 +254,38 @@ test('reinforced mast socket has material in the gusset and segmented crown seat
     .translate([25, -0.5, 22])
     .rotate([0, 0, l.base.hubAngles[0]])
   near(probe.intersect(hub).volume(), 1)
+  // A rolling ball touches the upright and horizontal barrel. Sample the
+  // middle of its arc at five positions around the upper socket saddle.
+  const R = 12,
+    mastRadius = 23,
+    socketRadius = (hardware.od + hardware.clearance) / 2 + 5.5
+  for (const y of [-19, -10, 0, 10, 19]) {
+    const x = Math.sqrt((mastRadius + R) ** 2 - y * y),
+      z = Math.sqrt((socketRadius + R) ** 2 - y * y)
+    const direction = [
+      x / (mastRadius + R),
+      y / (mastRadius + R) + y / (socketRadius + R),
+      z / (socketRadius + R),
+    ]
+    const norm = Math.hypot(...direction)
+    for (const [distance, inside] of [
+      [R + 0.25, true],
+      [R - 0.25, false],
+    ]) {
+      const point = [x, y, z].map(
+        (v, i) => v - (direction[i] / norm) * distance
+      )
+      const bead = k.Manifold.sphere(0.05, 12)
+        .translate(point)
+        .rotate([0, 0, l.base.hubAngles[0]])
+      near(bead.intersect(hub).volume(), inside ? bead.volume() : 0)
+    }
+  }
   const collar = parts.find((p) => p.name === 'mast-collar').solid
   for (const panel of parts.filter((p) => p.name.startsWith('crown-panel'))) {
     near(panel.solid.intersect(collar).volume(), 0)
   }
-  const files = unzipSync(buildKit(k, p))
+  const files = unzipSync(buildKit(k, p, hardware, png, png))
   assert.ok(files['STL/sliding-union.stl'])
   assert.ok(files['CUT-SHEET.txt'])
   assert.match(strFromU8(files['START-HERE.txt']), /10-foot sticks/)

@@ -146,6 +146,7 @@ Print in mm at 100%. Test one elbow on a deburred tube offcut. Each rim socket e
   )} for Ø${mm(
     f.od
   )} EMT. Inspect horizontal bores for sag or support residue. Smooth any stringing from the slot and rounded rim. Lace one strip at both ends and check it holds before printing a batch.
+For ABS or PETG, test the socket on an offcut printed with your production material, orientation and slicer profile. The base fittings export foot down and the star socket exports with its flat mounting face on the bed. Inspect the upper inside surface of each horizontal socket and remove support material before fitting EMT.
 The printed fittings are prototypes. Wind resistance, creep and anchoring for your site need physical verification.
 
 ASSEMBLY
@@ -218,7 +219,61 @@ ${l.runs
   .join('\n')}
 `
 }
-export function buildKit(kernel, p, f = hardware) {
+// Section the finished solid, including bores and pilots. Each panel uses the
+// same millimetre scale so the amount of material at a junction is visible.
+function jointSections(parts, layout) {
+  const views = [
+    [
+      'Mast hub · spoke centreline',
+      'mast-base',
+      layout.base.hubAngles[0],
+      true,
+    ],
+    ['Spoke elbow · horizontal', 'spoke-corner', 0, false],
+    ['Rim elbow · horizontal', 'plain-corner', 0, false],
+    ['Star socket · vertical', 'star-socket', 90, true],
+  ]
+  let y = 15
+  const rows = []
+  for (const [label, name, angle, vertical] of views) {
+    const part = parts.find((p) => p.name === name)
+    if (!part) continue
+    const solid = vertical
+      ? part.solid.rotate([0, 0, -angle]).rotate([90, 0, 0])
+      : part.solid
+    const section = solid.slice(0)
+    const { min, max } = section.bounds()
+    const contours = section
+      .toPolygons()
+      .map(
+        (poly) =>
+          'M' +
+          poly.map(([x, v]) => x.toFixed(2) + ',' + (-v).toFixed(2)).join('L') +
+          'Z'
+      )
+      .join('')
+    rows.push(
+      `<text x="8" y="${y}" font-size="4">${label}</text><path fill="#546c67" fill-rule="evenodd" transform="translate(${
+        8 - min[0]
+      } ${y + 4 + max[1]})" d="${contours}"/>`
+    )
+    y += max[1] - min[1] + 16
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="200mm" height="${y}mm" viewBox="0 0 200 ${y}"><rect width="100%" height="100%" fill="white"/><g font-family="sans-serif"><text x="8" y="6" font-size="3.4">Printed joint sections · 1:1 at 100% print scale</text>${rows.join(
+    ''
+  )}</g></svg>`
+}
+export function buildKit(kernel, p, f = hardware, screenshot, joints) {
+  if (
+    ![screenshot, joints].every(
+      (image) =>
+        image instanceof Uint8Array &&
+        image.length >= 24 &&
+        [137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => image[i] === v)
+    )
+  )
+    throw Error('A PNG capture of the configured tree is required.')
+
   const l = frameLayout(p, f),
     parts = frameParts(kernel, p, f, l),
     files = {}
@@ -230,7 +285,8 @@ export function buildKit(kernel, p, f = hardware) {
     )
       throw Error('Invalid printable solid: ' + name)
     // A star half often fits the bed diagonally. Export in that print orientation.
-    let printable = solid
+    const oriented = name === 'star-socket' ? solid.rotate([90, 0, 0]) : solid
+    let printable = oriented
     function fits(shape) {
       const { min, max } = shape.boundingBox()
       return (
@@ -240,7 +296,7 @@ export function buildKit(kernel, p, f = hardware) {
     }
     if (!fits(printable)) {
       for (let angle = 1; angle < 90; angle++) {
-        printable = solid.rotate([0, 0, angle])
+        printable = oriented.rotate([0, 0, angle])
         if (fits(printable)) break
       }
       if (!fits(printable))
@@ -255,14 +311,25 @@ export function buildKit(kernel, p, f = hardware) {
     files['STL/' + name + '.stl'] = stl(printable.translate(min.map((v) => -v)))
   }
   const cuts = cutSheet(l)
+  files['printed-joints.png'] = [joints, { level: 0 }]
+  files['tree-render.png'] = [screenshot, { level: 0 }]
   files['CUT-SHEET.txt'] = strToU8(cuts.text)
-  files['START-HERE.txt'] = strToU8([
-    'MEGA TREE BUILDER', '', cuts.buy, ...cuts.longer, '',
-    '1. Open CUT-SHEET.txt for finished lengths and the cuts to make from each stick.',
-    '2. Print one elbow from STL/ and check it on your EMT. Find print quantities in ASSEMBLY.txt.',
-    '3. Assemble using ASSEMBLY.txt and the numbered drawing in base-plan.svg.', '',
-  ].join('\n'))
+  files['START-HERE.txt'] = strToU8(
+    [
+      'MEGA TREE BUILDER',
+      '',
+      cuts.buy,
+      ...cuts.longer,
+      '',
+      'tree-render.png shows your 3D view. Inspect the fittings in printed-joints.png and joint-sections.svg.',
+      '1. Open CUT-SHEET.txt for finished lengths and the cuts to make from each stick.',
+      '2. Print one elbow from STL/ and check it on your EMT. Find print quantities in ASSEMBLY.txt.',
+      '3. Assemble using ASSEMBLY.txt and the numbered drawing in base-plan.svg.',
+      '',
+    ].join('\n')
+  )
   files['ASSEMBLY.txt'] = strToU8(sheet(p, f, l, parts))
+  files['joint-sections.svg'] = strToU8(jointSections(parts, l))
   files['base-plan.svg'] = strToU8(diagram(l))
   files['configuration.json'] = strToU8(
     JSON.stringify({ tree: p, hardware: f }, null, 2)

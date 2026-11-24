@@ -1,3 +1,4 @@
+import { jointViews } from './frame/joint-views.js'
 import { savedHardware } from './frame/layout.js'
 import * as T from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
@@ -89,7 +90,9 @@ export function createPreview(container, personEnabled) {
   scene.add(model)
   const fieldTint = { value: new T.Color('#48c0d8') }
   const footprint = { value: 0.65 }
-  const photo = new T.TextureLoader().load(
+  const assets = new T.LoadingManager()
+  const assetsReady = new Promise(resolve => { assets.onLoad = resolve })
+  const photo = new T.TextureLoader(assets).load(
     '/textures/preller-drive.webp',
     () => {
       photo.colorSpace = T.SRGBColorSpace
@@ -153,7 +156,7 @@ export function createPreview(container, personEnabled) {
   shadow.rotation.x = -Math.PI / 2
   shadow.position.y = 0.001
   person.add(shadow)
-  new GLTFLoader().load('/models/scale-person-wes.glb', ({ scene: figure }) => {
+  new GLTFLoader(assets).load('/models/scale-person-wes.glb', ({ scene: figure }) => {
     figure.rotation.y = -0.32
     const bounds = new T.Box3().setFromObject(figure, true)
     const scale = personHeight / (bounds.max.y - bounds.min.y)
@@ -221,6 +224,7 @@ export function createPreview(container, personEnabled) {
   }).observe(container)
 
   const loadFrame = frameMeshCache()
+  let frameReady, settleFrame
   let assembly,
     focus = 'tree'
   const frameStatus = document.getElementById('hardware-status')
@@ -258,6 +262,8 @@ export function createPreview(container, personEnabled) {
     render()
   }
   function update(p, pattern, fit) {
+    settleFrame?.(false)
+    frameReady = new Promise(resolve => { settleFrame = resolve })
     latest = p
     latestPattern = pattern
     // Short pitches put several bright emitters inside the same bloom kernel.
@@ -285,6 +291,7 @@ export function createPreview(container, personEnabled) {
       frameStatus.textContent = 'Loading printed hardware…'
     } catch (error) {
       assembly = null
+      settleFrame(false)
       frameStatus.textContent = 'Nominal preview · ' + error.message
       focus = 'tree'
     }
@@ -343,11 +350,13 @@ export function createPreview(container, personEnabled) {
           addAssembly(model, p, layout, meshes)
           frameStatus.textContent = ''
           current.userData.printedFrame = true
+          settleFrame(true)
           render()
         },
         (message) => {
-          if (model === current)
-            frameStatus.textContent =
+          if (model !== current) return
+          settleFrame(false)
+          frameStatus.textContent =
               'Printed hardware unavailable · ' + message
         },
       )
@@ -694,6 +703,25 @@ export function createPreview(container, personEnabled) {
   }
   return {
     update,
+    async capture() {
+      await new Promise(requestAnimationFrame)
+      await assetsReady
+      let ready
+      do {
+        ready = frameReady
+        if (!await ready && ready === frameReady) throw Error('The printed frame could not be rendered.')
+      } while (ready !== frameReady)
+      if (renderer.getContext().isContextLost()) throw Error('The 3D preview lost its WebGL context.')
+      // WebGL can discard its drawing buffer after a frame is presented.
+      render()
+      async function png(canvas) {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+        if (!blob) throw Error('The 3D view could not be captured.')
+        return new Uint8Array(await blob.arrayBuffer())
+      }
+      const [screenshot, joints] = await Promise.all([png(renderer.domElement), png(jointViews(model))])
+      return { screenshot, joints }
+    },
     setBrightness(value) {
       brightness = value
       applyLighting?.()

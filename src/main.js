@@ -1,4 +1,5 @@
 import { frameLayout, savedHardware } from './frame/layout.js'
+import { kitFilename } from './frame/kit-name.js'
 import { setupFrameDialog } from './frame/dialog.js'
 import {
   createIcons,
@@ -663,7 +664,11 @@ $('export').onclick = () => {
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-setupFrameDialog(params, () => refresh('frame'))
+document.querySelector('.sample-kit').download = kitFilename(defaults)
+setupFrameDialog(params, () => refresh('frame'), () => {
+  if (!preview) throw Error('Enable WebGL 2 to capture your tree.')
+  return preview.capture()
+})
 activateIcons()
 try {
   preview = createPreview($('canvas'), showPerson)

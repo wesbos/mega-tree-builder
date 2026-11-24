@@ -8,9 +8,9 @@ Drag to orbit, scroll to zoom, or right-drag to pan. The magnifier switches to a
 
 ## Printable frame
 
-**Print frame kit** uses the current tree dimensions and measured hardware. **Download cut sheet** gives the number of 10-foot EMT sticks, grouped fractional-inch cuts, and the cuts for each stick. The kit ZIP adds the printable STLs, numbered base drawing, and assembly guide. The stock plan assumes a 1/8-inch kerf and calls out any single-piece mast that needs longer stock.
+**Print frame kit** uses the current tree dimensions and measured hardware. **Download cut sheet** gives the number of 10-foot EMT sticks, grouped fractional-inch cuts, and the cuts for each stick. Each kit ZIP is named for its height, diameters, wrap, run count, pitch and optional star size. It includes the current render, fitting close-ups, joint cross-sections, CUT-SHEET.txt, assembly guide, base plan, configuration and printable STLs. The stock plan assumes a 1/8-inch kerf and calls out any single-piece mast that needs longer stock.
 
-The shared Manifold CAD model is in `src/frame/solids.ts`. It generates both the downloadable parts and the frame meshes in the Three.js preview. Run `npm run check:cad` to type-check it and `node scripts/frame-kit.js` to regenerate the standard kit. Fit-test an elbow with your conduit before printing the batch. The frame is a prototype without a measured load or wind rating.
+The shared Manifold CAD model is in `src/frame/solids.ts`. It generates both the downloadable parts and the frame meshes in the Three.js preview. The hub, elbows and star socket use rolling-ball blends around their fused exteriors. Conduit bores and screw pilots are cut afterward. Run `npm run check:cad` to type-check the CAD. To regenerate the standard kit from the default browser render, run `npx playwright install chromium` once and then `node scripts/frame-kit.js`. Fit-test an elbow with your conduit before printing the batch. The frame is a prototype without a measured load or wind rating.
 
 ## Calculation assumptions
 

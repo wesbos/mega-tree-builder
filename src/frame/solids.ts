@@ -1,3 +1,5 @@
+import { filletedJunction } from './junction.ts'
+import type { Barrel } from './junction.ts'
 import { sockets } from './base.js'
 import { polar } from './layout.js'
 
@@ -78,62 +80,44 @@ export function frameParts(
   // Every branch has a cylindrical female bore and an integral end stop.
   // The flat central foot holds the EMT above ground for the cord underneath.
   function fitting(name: string, count: number, ports: Socket[], mast = false) {
-    const outer = tube + 5.5,
-      skins = [
-        roundedBarrel(outer, 2 * sockets.axisHeight - 3, 1.5).translate([
-          0,
-          0,
-          -sockets.axisHeight,
-        ]),
-      ]
-    // A 10 mm web with tangent R8 inside corners ties adjacent branches
-    // together. Its ends are buried in the barrels, well behind their mouths.
-    const roots = [C.circle(outer - 1, segments(outer - 1))]
+    const outer = tube + 5.5
+    const bodies: Barrel[] = [
+      {
+        start: [0, 0, -sockets.axisHeight - 0.3],
+        axis: [0, 0, 1],
+        length: mast ? 67 + sockets.axisHeight + 0.3 : 19,
+        radius: mast ? 23 : outer - 2,
+        edge: 2.5,
+      },
+    ]
     const bores: Manifold[] = []
     for (const { angle, stop, depth } of ports) {
-      const end = stop + depth
-      skins.push(
-        roundedBarrel(outer, end, 1.5).rotate([0, 90, 0]).rotate([0, 0, angle])
-      )
-      roots.push(
-        C.square([Math.min(end - 6, 38), 2 * (outer - 1)])
-          .translate([0, 1 - outer])
-          .rotate(angle)
-      )
-      if (mast) {
-        // The concave quarter-circle adds a buttress between mast and spoke.
-        const rib = C.ofPolygons([
-          [
-            [20, outer - 3],
-            [40, outer - 3],
-            [40, outer],
-            ...arc(37, outer + 14, 14, -90, -180),
-            [20, outer + 14],
-          ],
-        ])
-          .extrude(10)
-          .rotate([90, 0, 0])
-          .translate([0, 5, 0])
-        skins.push(rib.rotate([0, 0, angle]))
-      }
+      const end = stop + depth,
+        a = (angle * Math.PI) / 180
+      bodies.push({
+        start: [-4 * Math.cos(a), -4 * Math.sin(a), 0],
+        axis: [Math.cos(a), Math.sin(a), 0],
+        length: end + 4,
+        radius: outer,
+        edge: 1.6,
+      })
       bores.push(rx(stop, 0, 0, tube, depth + 2).rotate([0, 0, angle]))
       bores.push(
-        cyl(end - Math.min(10, depth * 0.4), 0, 0, 1.65, outer + 2).rotate([
+        cyl(end - Math.min(10, depth * 0.4), 0, 0, 1.65, outer + 20).rotate([
           0,
           0,
           angle,
         ])
       )
     }
-    const web = C.union(roots)
-      .offset(8, 'Round', 2, segments(8))
-      .offset(-8, 'Round', 2, segments(8))
-    skins.push(web.extrude(10).translate([0, 0, -5]))
-    if (mast) {
-      skins.push(roundedBarrel(23, 67, 1.5))
-      bores.push(cyl(0, 0, 20, tube, 50), rx(0, 0, 50, 1.65, 25))
-    }
-    add(name, count, cut(union(...skins), ...bores))
+    if (mast) bores.push(cyl(0, 0, 20, tube, 50), rx(0, 0, 50, 1.65, 35))
+    const body = filletedJunction(
+      M,
+      roundedBarrel,
+      bodies,
+      mast ? 12 : 8
+    ).trimByPlane([0, 0, 1], -sockets.axisHeight)
+    add(name, count, cut(body, ...bores))
   }
   const spoke = (angle: number) => ({
     angle,
@@ -227,7 +211,7 @@ export function frameParts(
       r + fillet
     )
   if (l.crownSections === 1) {
-    const rootRadius = Math.min(6, l.slotRadius - l.slotWidth / 2 - 24)
+    const rootRadius = Math.min(12, l.slotRadius - l.slotWidth / 2 - 24)
     add(
       'mast-crown',
       1,
@@ -293,15 +277,34 @@ export function frameParts(
       ...lights.map(([x, y]) => cyl(x, y, -1, p.holeDiameter / 2, 7))
     )
     let back = cut(
-      union(
-        roundedBarrel(l.star.screwRadius + 9, 10, 1.5).translate([0, 0, -10]),
-        // Flare the backing into the socket with a broad, rounded saddle.
-        M.hull([
-          roundedBarrel(18, 8, 2).translate([0, -10, -16]),
-          roundedBarrel(16, 38, 2).rotate([-90, 0, 0]).translate([0, -38, -30]),
-        ]),
-        roundedBarrel(23, 48, 1.5).rotate([-90, 0, 0]).translate([0, -44, -30])
-      ),
+      filletedJunction(
+        M,
+        roundedBarrel,
+        [
+          {
+            start: [0, 0, -10],
+            axis: [0, 0, 1],
+            length: 10.3,
+            radius: l.star.screwRadius + 9,
+            edge: 1.5,
+          },
+          {
+            start: [0, -10, -30],
+            axis: [0, 0, 1],
+            length: 24,
+            radius: 16,
+            edge: 2,
+          },
+          {
+            start: [0, -44, -30],
+            axis: [0, 1, 0],
+            length: 48,
+            radius: 23,
+            edge: 1.6,
+          },
+        ],
+        7
+      ).trimByPlane([0, 0, -1], 0),
       ry(0, -46, -30, tube, 44),
       rx(0, -28, -30, 1.65, 26)
     )
