@@ -3,13 +3,21 @@ import * as T from 'three'
 // Photograph the same CAD meshes as the assembly, without the EMT hiding the
 // socket blends. Their native CAD coordinate system is millimetres, Z up.
 export function jointViews(model) {
+  const above = [0.9, -1, 0.76],
+    below = [0.6, -0.85, -1.65]
   const parts = [
-    ['mast-base', 'Mast hub'],
-    ['spoke-corner', 'Spoke elbow'],
-    ['plain-corner', 'Rim elbow'],
-    ['star-socket', 'Star socket'],
+    ['mast-base', 'Mast hub', above],
+    ['spoke-corner', 'Spoke elbow', above],
+    ['mast-base', 'Mast hub underside', below],
+    ['spoke-corner', 'Spoke elbow underside', below],
+    ['plain-corner', 'Rim elbow', above],
+    ['star-socket', 'Star socket', [0.9, 1, -0.7]],
   ]
-    .map(([name, label]) => [model.getObjectByName(name)?.geometry, label])
+    .map(([name, label, view]) => [
+      model.getObjectByName(name)?.geometry,
+      label,
+      view,
+    ])
     .filter(([geometry]) => geometry)
   const width = 650,
     height = 430,
@@ -36,7 +44,7 @@ export function jointViews(model) {
   const imageHeight = height - 62
   renderer.setSize(width, imageHeight, false)
   try {
-    parts.forEach(([geometry, label], i) => {
+    parts.forEach(([geometry, label, view], i) => {
       const mesh = new T.Mesh(geometry, material)
       scene.add(mesh)
       geometry.computeBoundingSphere()
@@ -52,10 +60,8 @@ export function jointViews(model) {
         radius * 8
       )
       camera.up.copy(scene.up)
-      const direction =
-        label === 'Star socket'
-          ? new T.Vector3(0.9, 1, -0.7)
-          : new T.Vector3(0.9, -1, 0.76)
+      const direction = new T.Vector3(...view)
+      light.position.z = view === below ? -4 : 4
       camera.position
         .copy(center)
         .addScaledVector(direction.normalize(), radius * 4)

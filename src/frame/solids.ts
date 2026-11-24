@@ -59,6 +59,22 @@ export function frameParts(
       ],
       r
     )
+  function socketBore(depth: number, lip: number) {
+    // A tangent round on the inside of the mouth. The blind stop stays square
+    // for a saw-cut tube, and the parallel portion retains its nominal bore.
+    return turned(
+      [
+        [0, 0],
+        [tube, 0],
+        // Carry the last arc station past the sampled socket end plane.
+        // Coincident cutter vertices otherwise collapse in float32 STL.
+        ...arc(tube + lip, depth + 0.08 - lip, lip, 180, 90),
+        [tube + lip, depth + 3],
+        [0, depth + 3],
+      ],
+      tube + lip
+    )
+  }
   const rx = (x: number, y: number, z: number, r: number, h: number) =>
     cyl(0, 0, 0, r, h).rotate([0, 90, 0]).translate([x, y, z])
   const ry = (x: number, y: number, z: number, r: number, h: number) =>
@@ -81,6 +97,8 @@ export function frameParts(
   // The flat central foot holds the EMT above ground for the cord underneath.
   function fitting(name: string, count: number, ports: Socket[], mast = false) {
     const outer = tube + 5.5
+    const broadFoot = mast || ports.length === 3
+    const soleRadius = mast ? 17 : 14
     const bodies: Barrel[] = [
       {
         start: [0, 0, -sockets.axisHeight - 0.3],
@@ -99,9 +117,25 @@ export function frameParts(
         axis: [Math.cos(a), Math.sin(a), 0],
         length: end + 4,
         radius: outer,
-        edge: 1.6,
+        edge: broadFoot ? 2.5 : 1.6,
       })
-      bores.push(rx(stop, 0, 0, tube, depth + 2).rotate([0, 0, angle]))
+      if (broadFoot) {
+        // Extend the common flat sole under each loaded socket. Stop short
+        // of the mouth to leave all bungee wrap marks on exposed EMT.
+        const reach = Math.max(1, end - soleRadius - 5)
+        bodies.push({
+          start: [0, 0, -sockets.axisHeight - 0.35],
+          axis: [0, 0, 1],
+          length: 10,
+          radius: soleRadius,
+          edge: 3,
+          sweep: [reach * Math.cos(a), reach * Math.sin(a), 0],
+        })
+      }
+      const bore = broadFoot
+        ? socketBore(depth, 1.5).rotate([0, 90, 0]).translate([stop, 0, 0])
+        : rx(stop, 0, 0, tube, depth + 2)
+      bores.push(bore.rotate([0, 0, angle]))
       bores.push(
         cyl(end - Math.min(10, depth * 0.4), 0, 0, 1.65, outer + 20).rotate([
           0,
@@ -110,12 +144,16 @@ export function frameParts(
         ])
       )
     }
-    if (mast) bores.push(cyl(0, 0, 20, tube, 50), rx(0, 0, 50, 1.65, 35))
+    if (mast)
+      bores.push(
+        socketBore(47, 1.5).translate([0, 0, 20]),
+        rx(0, 0, 50, 1.65, 35)
+      )
     const body = filletedJunction(
       M,
       roundedBarrel,
       bodies,
-      mast ? 12 : 8
+      broadFoot ? 12 : 8
     ).trimByPlane([0, 0, 1], -sockets.axisHeight)
     add(name, count, cut(body, ...bores))
   }

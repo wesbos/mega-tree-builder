@@ -175,6 +175,35 @@ test('female elbows accept an axial EMT gauge and enclose it at the socket mouth
     0,
   ])
   const hub = parts.find((p) => p.name === 'mast-base').solid
+  // The entire bearing patch lies on the ground datum. A single contour and
+  // a patch under every socket catch both a central nub and separate feet.
+  const contact = (solid, ports, minimumArea) => {
+    near(solid.boundingBox().min[2], -sockets.axisHeight)
+    const footprint = solid.slice(-sockets.axisHeight + 0.001)
+    assert.equal(footprint.numContour(), 1)
+    assert.ok(footprint.area() > minimumArea)
+    for (const [angle, mouth] of ports) {
+      const a = (angle * Math.PI) / 180,
+        reach = mouth - 14
+      const patch = kernel.CrossSection.circle(4, 32).translate([
+        reach * Math.cos(a),
+        reach * Math.sin(a),
+      ])
+      near(patch.subtract(footprint).area(), 0)
+    }
+  }
+  contact(
+    hub,
+    l.base.hubAngles.map((a) => [a, l.base.hubMouth]),
+    6000
+  )
+  for (const d of l.base.designs.filter((d) => d.brace)) {
+    const ports = [
+      ...d.railAngles.map((a) => [a, d.stop + 20]),
+      [0, sockets.spokeMouth],
+    ]
+    contact(parts.find((p) => p.name === d.name).solid, ports, 1700)
+  }
   const fullTravelGauge = M.cylinder(
     l.base.hubMouth - sockets.spokeStop,
     hardware.od / 2,

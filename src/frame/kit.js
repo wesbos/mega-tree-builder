@@ -146,7 +146,7 @@ Print in mm at 100%. Test one elbow on a deburred tube offcut. Each rim socket e
   )} for Ø${mm(
     f.od
   )} EMT. Inspect horizontal bores for sag or support residue. Smooth any stringing from the slot and rounded rim. Lace one strip at both ends and check it holds before printing a batch.
-For ABS or PETG, test the socket on an offcut printed with your production material, orientation and slicer profile. The base fittings export foot down and the star socket exports with its flat mounting face on the bed. Inspect the upper inside surface of each horizontal socket and remove support material before fitting EMT.
+For ABS or PETG, test the socket on an offcut printed with your production material, orientation and slicer profile. The mast hub and spoke corners share a broad, flat sole that extends under each socket. The base fittings export foot down and the star socket exports with its flat mounting face on the bed. Inspect the upper inside surface of each horizontal socket and remove support material before fitting EMT.
 The printed fittings are prototypes. Wind resistance, creep and anchoring for your site need physical verification.
 
 ASSEMBLY

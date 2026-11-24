@@ -10,6 +10,8 @@ export interface Barrel {
   length: number
   radius: number
   edge: number
+  // Optional travel perpendicular to the axis creates a capsule-shaped shoe.
+  sweep?: Vec3
 }
 
 export function filletedJunction(
@@ -20,7 +22,11 @@ export function filletedJunction(
 ) {
   const skins = bodies.map((b) => {
     const [x, y, z] = b.axis
-    return barrel(b.radius + radius, b.length + 2 * radius, b.edge + radius)
+    const skin = barrel(
+      b.radius + radius,
+      b.length + 2 * radius,
+      b.edge + radius
+    )
       .translate([0, 0, -radius])
       .rotate([
         0,
@@ -28,6 +34,7 @@ export function filletedJunction(
         (Math.atan2(y, x) * 180) / Math.PI,
       ])
       .translate(b.start)
+    return b.sweep ? M.hull([skin, skin.translate(b.sweep)]) : skin
   })
   const expanded = M.union(skins)
   const mesh = expanded.getMesh()
@@ -37,13 +44,29 @@ export function filletedJunction(
   const boundary = new MeshBVH(geometry)
   const point = new Vector3()
   const hit = { point: new Vector3(), distance: 0, faceIndex: 0 }
+  const fields = bodies.map((b) => ({
+    ...b,
+    inverseTravelSquared: b.sweep
+      ? 1 / (b.sweep[0] ** 2 + b.sweep[1] ** 2 + b.sweep[2] ** 2)
+      : 0,
+  }))
   function distance([x, y, z]: Vec3) {
     let first = Infinity,
       second = Infinity
-    for (const b of bodies) {
-      const dx = x - b.start[0],
+    for (const b of fields) {
+      let dx = x - b.start[0],
         dy = y - b.start[1],
         dz = z - b.start[2]
+      if (b.sweep) {
+        const [sx, sy, sz] = b.sweep
+        const t = Math.max(
+          0,
+          Math.min(1, (dx * sx + dy * sy + dz * sz) * b.inverseTravelSquared)
+        )
+        dx -= t * sx
+        dy -= t * sy
+        dz -= t * sz
+      }
       const axial = dx * b.axis[0] + dy * b.axis[1] + dz * b.axis[2]
       const radial = Math.sqrt(
         Math.max(0, dx * dx + dy * dy + dz * dz - axial * axial)
