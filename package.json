@@ -1,0 +1,23 @@
+{
+  "name": "mega-tree-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "npm run check:cad && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test",
+    "check:cad": "tsc -p tsconfig.cad.json"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "lucide": "^1.79.0",
+    "manifold-3d": "^3.5.5",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^8.3.8"
+  }
+}

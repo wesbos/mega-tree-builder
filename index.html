@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f7f8f6" />
+    <title>Mega Tree Builder</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231c644b'/%3E%3Cpath d='M16 5 8 17h4l-6 9h20l-6-9h4z' fill='%23b7f5c1'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="shell bar">
+        <div class="brand">
+          <span class="brandmark" aria-hidden="true"></span>Mega Tree Builder
+        </div>
+        <span class="brand-sub">LED design studio</span>
+        <div class="local"><i class="status-dot"></i> Saved on this device</div>
+      </div>
+    </header>
+    <main class="shell">
+      <div class="intro">
+        <div>
+          <h1>Design your tree</h1>
+          <p>
+            Configure your LED tree and calculate the hardware for your build.
+          </p>
+        </div>
+        <div class="build-actions">
+          <button class="export" id="frame-open">Print frame kit</button>
+          <button class="export" id="export">
+            <i data-lucide="download"></i> Export build
+          </button>
+        </div>
+      </div>
+      <div class="workspace">
+        <section
+          class="visual-column"
+          aria-label="Tree preview and build estimates"
+        >
+          <div class="preview-card">
+            <div class="stage" id="stage">
+              <div id="canvas"></div>
+              <div class="stage-top">
+                <div class="preview-label">
+                  <i data-lucide="box"></i
+                  ><span id="view-label">3D preview</span>
+                </div>
+                <div class="stage-tools">
+                  <button
+                    id="inspect"
+                    title="Inspect mounting strip with lights off"
+                    aria-label="Inspect mounting strip with lights off"
+                    aria-pressed="false"
+                  >
+                    <i data-lucide="zoom-in"></i></button
+                  ><button
+                    id="grid"
+                    aria-label="Show ground grid"
+                    title="Show ground grid"
+                    aria-pressed="false"
+                  >
+                    <i data-lucide="grid-2x2"></i></button
+                  ><button
+                    id="fit"
+                    title="Fit tree to view"
+                    aria-label="Fit tree to view"
+                  >
+                    <i data-lucide="scan"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="stage-foot">
+                <span class="axis" aria-hidden="true"
+                  ><svg viewBox="0 0 52 44">
+                    <g stroke-width="1.7" fill="none">
+                      <path d="M22 28v-17" stroke="#80d9a1" />
+                      <path d="M22 28l16 6" stroke="#fa9798" />
+                      <path d="M22 28l-14 6" stroke="#89b7f3" />
+                    </g>
+                    <g font-size="9" font-family="monospace">
+                      <text x="19" y="9" fill="#80d9a1">Y</text>
+                      <text x="39" y="38" fill="#fa9798">X</text>
+                      <text x="1" y="39" fill="#89b7f3">Z</text>
+                    </g>
+                  </svg></span
+                ><span class="orbit"
+                  ><i data-lucide="mouse-pointer-2"></i> Drag to orbit
+                  <b>·</b> Scroll to zoom</span
+                >
+              </div>
+            </div>
+            <div class="frame-view"><label for="hardware-view">Inspect frame</label>
+              <select id="hardware-view"><option value="tree">Whole tree</option><option value="base">Base joint &amp; bungee</option><option value="crown">Mast &amp; crown</option><option value="star">Star bracket</option></select>
+              <span id="hardware-status" role="status"></span></div>
+            <div class="pattern-bar">
+              <div class="pattern-title">
+                <i data-lucide="palette"></i>Light pattern
+              </div>
+              <div id="patterns">
+                <button data-pattern="aurora" aria-pressed="true">
+                  <span class="swatch aurora"></span>Aurora
+                </button>
+                <button data-pattern="candy" aria-pressed="false">
+                  <span class="swatch candy"></span>Candy cane
+                </button>
+                <button data-pattern="warm" aria-pressed="false">
+                  <span class="swatch warm"></span>Warm white
+                </button>
+              </div>
+            </div>
+            <div class="view-controls">
+              <label for="dimmer">Preview dimmer</label
+              ><input
+                id="dimmer"
+                type="range"
+                min="0"
+                max="100"
+                value="65"
+                step="1"
+              /><output for="dimmer" id="brightness-value">65%</output>
+              <label class="person-label"
+                ><input id="person" type="checkbox" checked />5′10″
+                person</label
+              >
+            </div>
+          </div>
+          <div class="summary-head">
+            <h2>Build summary</h2>
+            <button id="details">
+              <span>View details</span><i data-lucide="list"></i>
+            </button>
+          </div>
+          <div id="summary" class="summary"></div>
+        </section>
+        <aside class="settings">
+          <div class="settings-head">
+            <h2>Configuration</h2>
+            <button
+              id="reset"
+              class="plain-icon"
+              title="Reset configuration"
+              aria-label="Reset configuration"
+            >
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+          </div>
+          <div class="tabs">
+            <button data-tab="presets" aria-pressed="true">
+              <i data-lucide="layers"></i>Presets
+            </button>
+            <button data-tab="geometry" aria-pressed="false">
+              <i data-lucide="sliders-horizontal"></i>Geometry</button
+            ><button data-tab="power" aria-pressed="false">
+              <i data-lucide="zap"></i>Power
+            </button>
+          </div>
+          <div id="presets" class="pane">
+            <section>
+              <div class="pair">
+                <div class="single">
+                  <label for="budget">Available pixels</label>
+                  <div class="number">
+                    <input
+                      type="number"
+                      id="budget"
+                      min="1"
+                      max="1000000"
+                      step="1"
+                      value="1300"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="single">
+                  <label for="full-strands">Target runs at 360°</label>
+                  <div class="number">
+                    <input
+                      type="number"
+                      id="full-strands"
+                      min="4"
+                      max="512"
+                      step="1"
+                      value="24"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div id="string-settings" class="pair"></div>
+              <p class="note" id="planner-note"></p>
+            </section>
+            <div id="choices"></div>
+            <p id="planner-status" class="note" role="status"></p>
+          </div>
+          <div id="geometry" class="pane" hidden>
+            <section>
+              <h3><i data-lucide="cone"></i>Frame dimensions</h3>
+              <div id="dimensions"></div>
+              <div class="field-title wrap-title">
+                <label for="angle">Wrap angle</label
+                ><span id="wrap-caption"></span>
+              </div>
+              <div class="wrap-options">
+                <button data-angle="180">180°</button
+                ><button data-angle="270">270°</button
+                ><button data-angle="360">360°</button>
+                <div class="custom-angle">
+                  <input
+                    id="angle"
+                    type="number"
+                    aria-label="Custom wrap angle"
+                    min="0.01"
+                    max="360"
+                    step="any"
+                  /><span>°</span>
+                </div>
+              </div>
+            </section>
+            <section>
+              <h3><i data-lucide="grip"></i>Pixel layout</h3>
+              <div class="pair" id="layout"></div>
+              <p class="note" id="pitch-note"></p>
+              <details>
+                <summary>Mounting strip</summary>
+                <div class="extra" id="stock"></div>
+              </details>
+            </section>
+            <section>
+              <div class="switch-row">
+                <label for="star"><i data-lucide="star"></i>Star topper</label
+                ><input type="checkbox" id="star" role="switch" />
+              </div>
+              <div class="pair" id="topper"></div>
+            </section>
+          </div>
+          <div id="power" class="pane" hidden>
+            <section>
+              <h3><i data-lucide="cpu"></i>WS2811 bullet pixels</h3>
+              <div id="current"></div>
+              <p class="note">
+                Use the full-white current from your pixel spec or a measured
+                string. The initial estimate uses 50 mA per pixel.
+                <a
+                  href="https://www.proledplus.com/pixel-lighting/digital-led-modules/12mm-dc12v-ws2811-diffused-thin-digital-rgb-led-pixels.html"
+                  target="_blank"
+                  rel="noreferrer"
+                  >Example pixel specification</a
+                >
+              </p>
+            </section>
+            <section>
+              <h3><i data-lucide="plug"></i>DC power supply</h3>
+              <div class="pair" id="supply"></div>
+              <p class="note">
+                Enter the available DC output at your mains voltage. Your preset
+                uses 900 W on 120 V AC.
+              </p>
+            </section>
+            <section>
+              <h3><i data-lucide="activity"></i>Full-white estimate</h3>
+              <div id="power-readout"></div>
+            </section>
+          </div>
+        </aside>
+      </div>
+    </main>
+    <dialog id="frame-dialog" aria-labelledby="frame-title">
+      <div class="dialog-head"><h2 id="frame-title">Printable EMT frame</h2><button type="button" class="plain-icon" id="frame-close" aria-label="Close frame kit">×</button></div>
+      <p>Enclosed elbows join the straight rails. The base places every wrap mark at the same radius, and a level crown aligns the pixel rows. Download the STL parts, anchor map and square-cut list for this tree.</p>
+      <form id="frame-options">
+        <fieldset><legend>Hardware dimensions in millimetres</legend>
+          <label>Conduit outside diameter<input type="number" name="od" min="28" max="31.5" step="any" required></label>
+          <label>Socket diametral clearance<input type="number" name="clearance" min=".15" max="1.5" step="any" required></label>
+          <label>Ball diameter<input type="number" name="ball" min="8" max="60" step="any" required></label>
+          <label>Cord diameter<input type="number" name="cord" min="2" max="4.5" step="any" required></label>
+          <label>Relaxed ball-to-bight length<input type="number" name="loop" min="30" max="500" step="any" required></label>
+          <label>Installed hole-to-rail reach<input type="number" name="reach" min="28" max="500" step="any" required></label>
+          <label>Installed upper hole-to-rim reach<input type="number" name="topReach" min="20" max="500" step="any" required></label>
+          <label>Square print bed<input type="number" name="bed" min="100" max="1000" step="any" required></label>
+        </fieldset>
+        <p>Wrap one bungee through an empty strip hole and around the EMT. Measure from the hole centre to the rail centre under light tension. At the crown, measure from the upper strip hole to the rim with the loop through its slot. Both initial estimates are 50 mm.</p>
+        <p id="frame-status" role="status"></p>
+        <button class="export" type="button" id="frame-cut-sheet">Download cut sheet</button>
+        <button class="export" id="frame-generate" type="submit">Download this frame kit</button>
+      </form>
+      <a class="sample-kit" href="/downloads/mega-tree-frame.zip" download>Download the standard 24-run kit</a>
+    </dialog>
+    <dialog id="sheet">
+      <div class="dialog-head">
+        <h2>Build details</h2>
+        <button id="close" class="plain-icon" aria-label="Close build details">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="detail-body"></div>
+    </dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

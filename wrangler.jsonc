@@ -1,0 +1,7 @@
+{
+  "name": "mega-tree-builder",
+  "compatibility_date": "2026-11-24",
+  "assets": { "directory": "./dist" },
+  "workers_dev": false,
+  "routes": [{ "pattern": "megatree.wesbos.com", "custom_domain": true }],
+}
